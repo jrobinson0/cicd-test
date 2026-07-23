@@ -41,6 +41,12 @@ repo was switched to public for that reason.
    (The host URL is already hardcoded to `https://sonarcloud.io` in the workflow, so no
    `SONAR_HOST_URL` secret is needed.)
 
+8. **Turn off Automatic Analysis.** Even when you pick "With GitHub Actions" during import,
+   SonarCloud sometimes leaves Automatic Analysis enabled too, which makes the CI scan fail
+   with `ERROR You are running CI analysis while Automatic Analysis is enabled.` Go to your
+   project on sonarcloud.io → **Administration → Analysis Method** and switch the "Automatic
+   Analysis" toggle **off**, leaving only the GitHub Actions analysis active.
+
 ## 2. Docker images → GitHub Container Registry (GHCR)
 
 The `docker` job builds both images and pushes them to `ghcr.io` using the built-in
@@ -75,5 +81,6 @@ to the workflow run (Actions tab → the run → **Artifacts**) with full traces
 - [ ] Import the project in SonarCloud ("With GitHub Actions" analysis method)
 - [ ] Confirm/update `sonar.projectKey` and `sonar.organization` in `sonar-project.properties`
 - [ ] Add the `SONAR_TOKEN` repository secret
+- [ ] Turn off "Automatic Analysis" in SonarCloud project Administration settings
 - [ ] Set **Workflow permissions** to "Read and write" so Docker images can push to GHCR
 - [ ] Push/open a PR to trigger the pipeline and confirm all four jobs go green
