@@ -7,47 +7,39 @@ eslint → sonarqube → docker (build & push to GHCR) → playwright (e2e)
 ```
 
 `eslint` and `playwright` work out of the box with no configuration. `sonarqube` and `docker`
-need one-time setup in the GitHub web UI before they'll pass. Until you do this, those two jobs
-will fail (or be skipped) — that's expected, not a bug in the code.
+need one-time setup in the GitHub/SonarCloud web UI before they'll pass. Until you do this,
+those two jobs will fail — that's expected, not a bug in the code.
 
-## 1. SonarQube (or SonarCloud) — required secrets
+## 1. SonarCloud setup
 
-The `sonarqube` job needs two repository secrets: `SONAR_TOKEN` and `SONAR_HOST_URL`.
+We're using **SonarCloud** (SonarSource's hosted SaaS), which is free for public repos — this
+repo was switched to public for that reason.
 
-You have two options:
-
-### Option A — SonarCloud (SaaS, easiest)
-
-> Note: SonarCloud's free tier only covers **public** repositories. Since `cicd-test` is
-> private, you'd need a paid SonarCloud plan, or make the repo public, or use Option B instead.
-
-1. Go to https://sonarcloud.io and sign in with your GitHub account (`jrobinson0`).
-2. Click **+ → Analyze new project**, select the `cicd-test` repository, and follow the import
-   wizard. Note the **Organization Key** it assigns you.
-3. Open `sonar-project.properties` in this repo and add a line:
+1. Go to https://sonarcloud.io and click **Log in**, then choose **GitHub** and authorize with
+   your `jrobinson0` account.
+2. Click **+ (top right) → Analyze new project**.
+3. Pick your GitHub organization/account, then select the `cicd-test` repository, and click
+   **Set Up**.
+4. Choose **"With GitHub Actions"** as the analysis method when prompted (not the "Automatic
+   Analysis" option — this repo already has its own workflow driving the scan).
+5. SonarCloud will show you the exact **Organization Key** and **Project Key** it assigned.
+   Open `sonar-project.properties` in this repo and make sure these two lines match exactly
+   what SonarCloud displayed:
    ```
-   sonar.organization=<your-organization-key>
+   sonar.projectKey=<the project key SonarCloud shows you>
+   sonar.organization=<the organization key SonarCloud shows you>
    ```
-4. In SonarCloud: **My Account → Security → Generate Token**. Copy the token.
-5. In GitHub: go to
-   `https://github.com/jrobinson0/cicd-test/settings/secrets/actions`
-   and add two **repository secrets**:
-   - `SONAR_TOKEN` = the token you just generated
-   - `SONAR_HOST_URL` = `https://sonarcloud.io`
+   They're currently pre-filled with a best guess (`jrobinson0_cicd-test` / `jrobinson0`) — if
+   SonarCloud generated something different, update the file and commit the change.
+6. Generate a token: **My Account (avatar, top right) → Security → Generate Token**. Name it
+   something like `cicd-test-gha`, and copy it (you won't be able to see it again).
+7. In GitHub, go to
+   `https://github.com/jrobinson0/cicd-test/settings/secrets/actions` and add one
+   **repository secret**:
+   - `SONAR_TOKEN` = the token you just copied
 
-### Option B — Self-hosted SonarQube
-
-If you'd rather run your own SonarQube server (e.g. via Docker on a VM you control):
-
-1. Stand up a SonarQube instance (e.g. `docker run -d -p 9000:9000 sonarqube:community`) and
-   make sure it's reachable from the internet (GitHub-hosted runners need to reach it — a
-   local-only server on your laptop will not work unless you use a self-hosted runner).
-2. Log in, create a project manually, and generate a token under
-   **My Account → Security → Generate Token**.
-3. In GitHub, add repository secrets at
-   `https://github.com/jrobinson0/cicd-test/settings/secrets/actions`:
-   - `SONAR_TOKEN` = the token from your server
-   - `SONAR_HOST_URL` = the URL of your server (e.g. `https://sonarqube.example.com`)
+   (The host URL is already hardcoded to `https://sonarcloud.io` in the workflow, so no
+   `SONAR_HOST_URL` secret is needed.)
 
 ## 2. Docker images → GitHub Container Registry (GHCR)
 
@@ -65,7 +57,7 @@ Once a push to `main` succeeds, the images will appear at:
 - `ghcr.io/jrobinson0/cicd-test-backend:latest`
 - `ghcr.io/jrobinson0/cicd-test-frontend:latest`
 
-By default new GHCR packages are **private**. To view or manage them:
+New GHCR packages default to **private** even though the repo is public. To view or manage them:
 
 1. Go to `https://github.com/jrobinson0?tab=packages`.
 2. Click into each package → **Package settings** to change visibility or link it to the repo
@@ -79,8 +71,9 @@ to the workflow run (Actions tab → the run → **Artifacts**) with full traces
 
 ## Summary of what to do right now
 
-- [ ] Decide: SonarCloud (needs paid plan for a private repo) or self-hosted SonarQube
-- [ ] Add `SONAR_TOKEN` and `SONAR_HOST_URL` repository secrets
-- [ ] If using SonarCloud, add `sonar.organization=...` to `sonar-project.properties`
+- [x] Repo made public (required for SonarCloud's free tier)
+- [ ] Import the project in SonarCloud ("With GitHub Actions" analysis method)
+- [ ] Confirm/update `sonar.projectKey` and `sonar.organization` in `sonar-project.properties`
+- [ ] Add the `SONAR_TOKEN` repository secret
 - [ ] Set **Workflow permissions** to "Read and write" so Docker images can push to GHCR
 - [ ] Push/open a PR to trigger the pipeline and confirm all four jobs go green
